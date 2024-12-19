@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moodle
+  namespace: moodle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodle
+  template:
+    metadata:
+      labels:
+        app: moodle
+    spec:
+      containers:
+      - name: moodle
+        image: bitnami/moodle:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        # Configure external database connection without SSL
+        - name: MOODLE_DATABASE_HOST
+          value: "db-mysql-sgp1-29669-do-user-18448604-0.k.db.ondigitalocean.com"
+        - name: MOODLE_DATABASE_PORT_NUMBER
+          value: "25060"
+        - name: MOODLE_DATABASE_NAME
+          value: "defaultdb"
+        - name: MOODLE_DATABASE_USER
+          value: "doadmin"
+        - name: MOODLE_DATABASE_PASSWORD
+          value: "AVNS_YID-B7Q8KmmPWiyIjA6"
+        - name: MOODLE_DATABASE_TYPE
+          value: "mysqli"
+        volumeMounts:
+        - name: moodle-data
+          mountPath: /bitnami/moodle
+      volumes:
+      - name: moodle-data
+        persistentVolumeClaim:
+          claimName: moodle-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moodle
+  namespace: moodle
+spec:
+  selector:
+    app: moodle
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      nodePort: 30080
+  type: LoadBalancer

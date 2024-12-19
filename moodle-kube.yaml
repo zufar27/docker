@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moodle
+  namespace: moodle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodle
+  template:
+    metadata:
+      labels:
+        app: moodle
+    spec:
+      containers:
+      - name: moodle
+        image: panjol/docker-lms:v6
+        ports:
+        - containerPort: 80
+        env:
+        - name: MOODLE_DOCKER_DBTYPE
+          value: "mariadb"
+        - name: MOODLE_DOCKER_DBHOST
+          value: "moodle-db.moodle.svc.cluster.local"
+        - name: MOODLE_DOCKER_DBNAME
+          value: "moodle"
+#        - name: MOODLE_DOCKER_WWWROOT
+#          valueFrom:
+#            secretKeyRef:
+#              name: moodle-secret
+#              key: MOODLE_DOCKER_WWWROOT
+        - name: MOODLE_PREFIX
+          value: "mdl_"
+        - name: MOODLE_DOCKER_DBUSER
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secret
+              key: MOODLE_DOCKER_DBUSER
+        - name: MOODLE_DOCKER_DBPASS
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secret
+              key: MOODLE_DOCKER_DBPASS
+        volumeMounts:
+        - name: moodledata
+          mountPath: /var/moodledata
+
+      volumes:
+      - name: moodledata
+        persistentVolumeClaim:
+          claimName: moodle-pvc
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moodle
+  namespace: moodle
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 32123
+  selector:
+    app: moodle
+  type: NodePort
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moodle-pvc
+  namespace: moodle
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path

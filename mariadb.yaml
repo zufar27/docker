@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: moodle-db
+  namespace: moodle
+spec:
+  serviceName: "moodle-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodle-db
+  template:
+    metadata:
+      labels:
+        app: moodle-db
+    spec:
+      containers:
+      - name: moodle-db
+        image: mariadb:latest
+        ports:
+        - containerPort: 3306 
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secret
+              key: MOODLE_DOCKER_DBPASS
+        - name: MYSQL_DATABASE
+          value: "moodle"
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secret
+              key: MOODLE_DOCKER_DBUSER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secret
+              key: MOODLE_DOCKER_DBPASS
+        volumeMounts:
+        - name: moodle-dbdata
+          mountPath: /var/lib/mysql 
+  volumeClaimTemplates:
+  - metadata:
+      name: moodle-dbdata
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "local-path" 
+      resources:
+        requests:
+          storage: 10Gi
+ 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moodle-db
+  namespace: moodle
+spec:
+  ports:
+  - port: 3306
+    targetPort: 3306
+  selector:
+    app: moodle-db
+  clusterIP: None  
+  type: ClusterIP
